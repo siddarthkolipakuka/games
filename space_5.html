@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astronaut Adventure</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: "Arial", sans-serif;
+      background: black;
+      color: white;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      border: 2px solid white;
+    }
+    #level-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 2;
+      visibility: hidden;
+    }
+    #level-screen.visible {
+      visibility: visible;
+    }
+    #level-screen h1 {
+      font-size: 48px;
+      color: white;
+      margin-bottom: 20px;
+    }
+    #level-screen button {
+      padding: 15px 25px;
+      font-size: 20px;
+      background: white;
+      color: black;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #level-screen button:hover {
+      background: #ddd;
+    }
+    .instructions {
+      position: absolute;
+      bottom: 10px;
+      width: 100%;
+      text-align: center;
+      color: white;
+      font-size: 16px;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="level-screen">
+    <h1>Level <span id="level-number">1</span></h1>
+    <button onclick="startLevel()">Start Level</button>
+  </div>
+  <div class="instructions">Use arrow keys to move the astronaut. Collect gems and stars while avoiding obstacles!</div>
+  <canvas id="gameCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = 800;
+    canvas.height = 600;
+
+    // Game Variables
+    let astronaut = { x: canvas.width / 2, y: canvas.height / 2, size: 50, speed: 5 };
+    let stars = [];
+    let gems = [];
+    let obstacles = [];
+    let greenStars = [];
+    let backgroundStars = generateObjects(50, 2);
+    let score = 0;
+    let level = 1;
+    let pointsToNextLevel = 20;
+    let timer = 30;
+    let gameRunning = false;
+    let keys = {};
+
+    // Sound Effects
+    const gemSound = new Audio("https://www.fesliyanstudios.com/play-mp3/387");
+    const starSound = new Audio("https://www.fesliyanstudios.com/play-mp3/387");
+    const levelUpSound = new Audio("https://www.fesliyanstudios.com/play-mp3/6823");
+
+    // Background Music
+    const backgroundMusic = new Audio("https://www.fesliyanstudios.com/play-mp3/6563");
+    backgroundMusic.loop = true;
+    backgroundMusic.volume = 0.5; // Adjust volume as needed
+
+    // Event Listeners
+    window.addEventListener("keydown", (e) => (keys[e.key] = true));
+    window.addEventListener("keyup", (e) => (keys[e.key] = false));
+
+    // Initialize Game
+    function initializeGame() {
+      stars = generateObjects(10, 5);
+      gems = generateObjects(5, 10);
+      obstacles = generateObjects(3, 30);
+      greenStars = generateObjects(5, 3);
+      backgroundStars = generateObjects(50, 2);
+      score = 0;
+      timer = 30;
+      level = 1;
+      pointsToNextLevel = 20;
+      gameRunning = true;
+      backgroundMusic.play();
+      startTimer();
+    }
+
+    // Start Level
+    function startLevel() {
+      document.getElementById("level-screen").classList.remove("visible");
+      if (level === 1) {
+        initializeGame();
+      } else {
+        stars.push(...generateObjects(5, 5));
+        gems.push(...generateObjects(5, 10));
+        obstacles.push(...generateObjects(3, 30));
+        timer = 30; // Reset timer
+        startTimer();
+      }
+      gameRunning = true;
+    }
+
+    // Timer Logic
+    function startTimer() {
+      const timerInterval = setInterval(() => {
+        if (!gameRunning) {
+          clearInterval(timerInterval);
+        } else if (timer > 0) {
+          timer--;
+        } else {
+          clearInterval(timerInterval);
+          endGame();
+        }
+      }, 1000);
+    }
+
+    // Generate Random Objects
+    function generateObjects(count, size) {
+      const objects = [];
+      for (let i = 0; i < count; i++) {
+        objects.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: size,
+        });
+      }
+      return objects;
+    }
+
+    // Game Over
+    function endGame() {
+      gameRunning = false;
+      backgroundMusic.pause();
+      backgroundMusic.currentTime = 0;
+      alert(`Game Over! Final Score: ${score}`);
+      location.reload();
+    }
+
+    // Check Collision
+    function checkCollision(obj) {
+      return (
+        astronaut.x < obj.x + obj.size &&
+        astronaut.x + astronaut.size > obj.x &&
+        astronaut.y < obj.y + obj.size &&
+        astronaut.y + astronaut.size > obj.y
+      );
+    }
+
+    // Draw Astronaut
+    function drawAstronaut() {
+      const size = astronaut.size;
+      const { x, y } = astronaut;
+
+      // Draw helmet
+      ctx.fillStyle = "gray";
+      ctx.beginPath();
+      ctx.arc(x + size / 2, y + size / 4, size / 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw body
+      ctx.fillStyle = "blue";
+      ctx.fillRect(x + size / 4, y + size / 2, size / 2, size / 2);
+
+      // Draw arms
+      ctx.fillStyle = "blue";
+      ctx.fillRect(x, y + size / 2, size / 4, size / 8);
+      ctx.fillRect(x + (3 * size) / 4, y + size / 2, size / 4, size / 8);
+
+      // Draw legs
+      ctx.fillStyle = "blue";
+      ctx.fillRect(x + size / 4, y + size, size / 8, size / 4);
+      ctx.fillRect(x + (5 * size) / 8, y + size, size / 8, size / 4);
+    }
+
+    // Update Game
+    function updateGame() {
+      // Move Astronaut
+      if (keys["ArrowLeft"] && astronaut.x > 0) astronaut.x -= astronaut.speed;
+      if (keys["ArrowRight"] && astronaut.x < canvas.width - astronaut.size)
+        astronaut.x += astronaut.speed;
+      if (keys["ArrowUp"] && astronaut.y > 0) astronaut.y -= astronaut.speed;
+      if (keys["ArrowDown"] && astronaut.y < canvas.height - astronaut.size)
+        astronaut.y += astronaut.speed;
+
+      // Collect Stars
+      stars = stars.filter((star) => {
+        if (checkCollision(star)) {
+          score += 1;
+          starSound.play();
+          return false;
+        }
+        return true;
+      });
+
+      // Collect Gems
+      gems = gems.filter((gem) => {
+        if (checkCollision(gem)) {
+          score += 5;
+          gemSound.play();
+          return false;
+        }
+        return true;
+      });
+
+      // Check Collisions with Obstacles
+      for (let obs of obstacles) {
+        if (checkCollision(obs)) {
+          endGame();
+          return;
+        }
+      }
+
+      // Move Background Stars
+      backgroundStars.forEach((star) => {
+        star.y += 0.5;
+        if (star.y > canvas.height) star.y = 0;
+      });
+
+      // Level Progression
+      if (score >= pointsToNextLevel) {
+        level++;
+        pointsToNextLevel += 20;
+        levelUpSound.play();
+        document.getElementById("level-number").innerText = level;
+        document.getElementById("level-screen").classList.add("visible");
+        gameRunning = false;
+      }
+    }
+
+    // Draw Game
+    function drawGame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Background Stars
+      ctx.fillStyle = "gray";
+      backgroundStars.forEach((star) =>
+        ctx.fillRect(star.x, star.y, star.size, star.size)
+      );
+
+      // Draw Astronaut
+      drawAstronaut();
+
+      // Draw Stars
+      ctx.fillStyle = "white";
+      stars.forEach((star) =>
+        ctx.fillRect(star.x, star.y, star.size, star.size)
+      );
+
+      // Draw Gems
+      ctx.fillStyle = "yellow";
+      gems.forEach((gem) =>
+        ctx.fillRect(gem.x, gem.y, gem.size, gem.size)
+      );
+
+      // Draw Green Stars (Decorative)
+      ctx.fillStyle = "green";
+      greenStars.forEach((star) =>
+        ctx.fillRect(star.x, star.y, star.size, star.size)
+      );
+
+      // Draw Obstacles
+      ctx.fillStyle = "red";
+      obstacles.forEach((obs) =>
+        ctx.fillRect(obs.x, obs.y, obs.size, obs.size)
+      );
+
+      // Draw Score, Timer, and Level
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.fillText(`Score: ${score}`, 10, 20);
+      ctx.fillText(`Timer: ${timer}s`, 10, 50);
+      ctx.fillText(`Level: ${level}`, 10, 80);
+    }
+
+    // Game Loop
+    function gameLoop() {
+      if (gameRunning) {
+        updateGame();
+        drawGame();
+      }
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Start Game
+    initializeGame();
+    gameLoop();
+  </script>
+</body>
+</html>
